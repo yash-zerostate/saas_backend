@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
 const crypto  = require('crypto');
+const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 
@@ -32,6 +33,21 @@ const COOKIE_OPTIONS = {
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function signPretaJwt(user) {
+  if (!process.env.PRETA_PRIVATE_KEY) return null;
+  return jwt.sign(
+    {
+      plan:           user.plan,
+      role:           user.role,
+      has_paid:       user.has_paid,
+      billing_status: user.billing_status,
+      risk_score:     user.risk_score,
+    },
+    process.env.PRETA_PRIVATE_KEY,
+    { algorithm: 'RS256', expiresIn: '5m' }
+  );
 }
 
 async function issueTokens(user, res) {
@@ -101,6 +117,7 @@ router.post('/register', authLimiter, async (req, res) => {
     return res.status(201).json({
       user:         user.toSafeObject(),
       access_token,
+      preta_token:  signPretaJwt(user),
       expires_in:   900,
     });
   } catch (err) {
@@ -141,6 +158,7 @@ router.post('/login', authLimiter, async (req, res) => {
     return res.json({
       user:         user.toSafeObject(),
       access_token,
+      preta_token:  signPretaJwt(user),
       expires_in:   900,
     });
   } catch (err) {
