@@ -1,5 +1,6 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
 
 const { requireAuth } = require('../middleware/auth');
 
@@ -10,7 +11,7 @@ router.get('/me', requireAuth, (req, res) => {
   res.json({ user: req.user.toSafeObject() });
 });
 
-// GET /me/preta-context — only what the Preta loader needs
+// GET /me/preta-context — only what the Preta loader needs (plain JSON, no JWT)
 router.get('/me/preta-context', requireAuth, (req, res) => {
   const u = req.user;
 
@@ -29,6 +30,29 @@ router.get('/me/preta-context', requireAuth, (req, res) => {
       days_since_reg: daysSinceReg,
     },
   });
+});
+
+// GET /users/preta-token — RS256 signed JWT for Preta loader (universal, works with any frontend)
+router.get('/preta-token', requireAuth, (req, res) => {
+  const u = req.user;
+
+  if (!process.env.PRETA_PRIVATE_KEY) {
+    return res.status(503).json({ error: 'Preta JWT not configured' });
+  }
+
+  const token = jwt.sign(
+    {
+      plan:           u.plan,
+      role:           u.role,
+      has_paid:       u.has_paid,
+      billing_status: u.billing_status,
+      risk_score:     u.risk_score,
+    },
+    process.env.PRETA_PRIVATE_KEY,
+    { algorithm: 'RS256', expiresIn: '5m' }
+  );
+
+  res.json({ token });
 });
 
 // PATCH /me — update name or password
