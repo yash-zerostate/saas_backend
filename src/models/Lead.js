@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 /**
  * A form submission delivered by Preta.
  *
- * Preta does not store lead data — it hands each submission to this backend and keeps only
- * metadata on its own side. This collection is therefore the system of record for leads.
+ * Preta runs this element's form in `direct` mode: the visitor's browser posts the payload
+ * straight here and Preta keeps only metadata (which element, which page, did it succeed). This
+ * collection is therefore the system of record for the leads themselves.
  */
 const leadSchema = new mongoose.Schema(
   {
@@ -19,21 +20,8 @@ const leadSchema = new mongoose.Schema(
     // fixed schema here would silently drop whatever the creator added last week.
     form_data: { type: mongoose.Schema.Types.Mixed, required: true },
 
-    // How it arrived:
-    //   'direct'        — posted by the visitor's browser, straight to us
-    //   'through-preta' — forwarded by Preta's server (signed)
-    route: { type: String, enum: ['direct', 'through-preta'], default: 'direct' },
-
-    // Signature outcome. Only a 'through-preta' request can be verified — a browser cannot hold
-    // a signing key, so Direct submissions are always 'unsigned'.
-    verification: {
-      type: String,
-      enum: ['verified', 'unsigned', 'no-secret-configured'],
-      default: 'unsigned',
-    },
-
-    // When the visitor submitted, as reported by Preta. Kept separate from createdAt, which is
-    // when WE stored it — a queued retry can arrive hours after the submission.
+    // When the visitor submitted, as reported by the browser. Kept separate from createdAt,
+    // which is when WE stored it.
     submitted_at: { type: Date, default: null },
   },
   { timestamps: true }

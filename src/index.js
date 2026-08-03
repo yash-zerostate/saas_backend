@@ -43,18 +43,13 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(cookieParser());
-
-// Leads MUST be mounted before express.json(). The route verifies an HMAC over the RAW request
-// body, and express.json() consumes the stream — parsing first and re-serialising produces a
-// different string, so every signature would fail to match.
-app.use('/leads', leadRoutes);
-
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 app.use('/auth',  authRoutes);
 app.use('/users', userRoutes);
+app.use('/leads', leadRoutes);
 
 // Health check
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
