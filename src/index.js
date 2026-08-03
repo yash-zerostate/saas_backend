@@ -13,6 +13,7 @@ const cookieParser = require('cookie-parser');
 const { connectDB } = require('./db/connect');
 const authRoutes   = require('./routes/auth');
 const userRoutes   = require('./routes/users');
+const leadRoutes   = require('./routes/leads');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -20,14 +21,36 @@ const PORT = process.env.PORT || 4000;
 // Security headers
 app.use(helmet());
 
-// CORS — allow saas_nextjs frontend
+// CORS — allow the saas_nextjs frontend.
+//
+// Comma-separated so the deployed site and local dev can both be allowed at once. This matters
+// for Preta's Direct delivery mode: the visitor's BROWSER posts the lead straight to /leads from
+// the live site, so that origin must be allowed or every direct submission fails the preflight
+// and silently falls back to delivery through Preta.
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+if (allowedOrigins.length === 0) {
+  allowedOrigins.push('http://localhost:3002', 'https://saas-nextjs-flax.vercel.app');
+}
+
 app.use(cors({
-  origin:      process.env.ALLOWED_ORIGIN || 'http://localhost:3002',
+  // Callback form rather than a bare array so a request with no Origin header (server-to-server,
+  // curl) is allowed through — Preta's own forward has no Origin and must not be blocked.
+  origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)),
   credentials: true,
 }));
 
-app.use(express.json());
 app.use(cookieParser());
+
+// Leads MUST be mounted before express.json(). The route verifies an HMAC over the RAW request
+// body, and express.json() consumes the stream — parsing first and re-serialising produces a
+// different string, so every signature would fail to match.
+app.use('/leads', leadRoutes);
+
+app.use(express.json());
 
 // Routes
 app.use('/auth',  authRoutes);
