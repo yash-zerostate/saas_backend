@@ -77,4 +77,45 @@ router.get('/', async (req, res) => {
     }
 });
 
+/**
+ * DELETE /leads/:id — remove one lead.
+ *
+ * Open like the GET above, matching the demo nature of this app. On anything real this is a
+ * destructive operation on customer PII and would sit behind requireAuth.
+ */
+router.delete('/:id', async (req, res) => {
+    try {
+        const deleted = await Lead.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({ error: 'lead not found' });
+
+        console.log(`[leads] deleted ${req.params.id}`);
+        return res.json({ ok: true });
+    } catch (err) {
+        // An id that is not a valid ObjectId throws here rather than returning null.
+        console.error('[leads] delete failed:', err.message);
+        return res.status(400).json({ error: 'invalid id' });
+    }
+});
+
+/**
+ * DELETE /leads — remove every lead.
+ *
+ * Requires ?confirm=yes so a stray DELETE on the collection URL cannot wipe the table by
+ * accident. Exists to clear test data between runs.
+ */
+router.delete('/', async (req, res) => {
+    if (req.query.confirm !== 'yes') {
+        return res.status(400).json({ error: 'add ?confirm=yes to delete all leads' });
+    }
+
+    try {
+        const { deletedCount } = await Lead.deleteMany({});
+        console.log(`[leads] deleted all (${deletedCount})`);
+        return res.json({ ok: true, deleted: deletedCount });
+    } catch (err) {
+        console.error('[leads] delete all failed:', err.message);
+        return res.status(500).json({ error: 'could not delete leads' });
+    }
+});
+
 module.exports = router;

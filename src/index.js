@@ -38,9 +38,12 @@ if (allowedOrigins.length === 0) {
 
 app.use(cors({
   // Callback form rather than a bare array so a request with no Origin header (server-to-server,
-  // curl) is allowed through — Preta's own forward has no Origin and must not be blocked.
+  // curl) is allowed through.
   origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)),
   credentials: true,
+  // DELETE is used by the Leads page to clear test data; without it the browser's preflight
+  // rejects the request before it reaches us.
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
 }));
 
 app.use(express.json());
