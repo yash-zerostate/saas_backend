@@ -59,8 +59,15 @@ router.post('/', express.json({ limit: '128kb' }), async (req, res) => {
 router.get('/', async (req, res) => {
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
 
+    // More than one site delivers here, so each one asks for its own leads by domain. Without
+    // the filter every site's Leads page would show every other site's submissions.
+    const filter = {};
+    if (typeof req.query.domain === 'string' && req.query.domain.trim()) {
+        filter.domain = req.query.domain.trim();
+    }
+
     try {
-        const leads = await Lead.find().sort({ createdAt: -1 }).limit(limit).lean();
+        const leads = await Lead.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
         return res.json({
             leads: leads.map((l) => ({
                 id: String(l._id),
@@ -112,9 +119,16 @@ router.delete('/', async (req, res) => {
         return res.status(400).json({ error: 'add ?confirm=yes to delete all leads' });
     }
 
+    // Scoped by domain when one is given. More than one site delivers here, so an unscoped
+    // "delete all" from one site's Leads page would wipe every other site's leads too.
+    const filter = {};
+    if (typeof req.query.domain === 'string' && req.query.domain.trim()) {
+        filter.domain = req.query.domain.trim();
+    }
+
     try {
-        const { deletedCount } = await Lead.deleteMany({});
-        console.log(`[leads] deleted all (${deletedCount})`);
+        const { deletedCount } = await Lead.deleteMany(filter);
+        console.log(`[leads] deleted ${deletedCount}${filter.domain ? ` for ${filter.domain}` : ' (ALL domains)'}`);
         return res.json({ ok: true, deleted: deletedCount });
     } catch (err) {
         console.error('[leads] delete all failed:', err.message);
