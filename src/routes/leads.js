@@ -23,7 +23,7 @@ const router = express.Router();
  */
 
 router.post('/', express.json({ limit: '128kb' }), async (req, res) => {
-    const { form_data, element_id, domain, pathname, timestamp } = req.body || {};
+    const { form_data, element_id, element_type, form_name, domain, pathname, timestamp } = req.body || {};
 
     // Array is rejected explicitly: `typeof [] === 'object'`, so without this an array would slip
     // through and be stored as a lead with no fields.
@@ -34,6 +34,8 @@ router.post('/', express.json({ limit: '128kb' }), async (req, res) => {
     try {
         const lead = await Lead.create({
             element_id: element_id || null,
+            element_type: element_type || null,
+            form_name: form_name || null,
             domain: domain || null,
             pathname: pathname || null,
             form_data: form_data,
@@ -65,6 +67,8 @@ router.get('/', async (req, res) => {
                 receivedAt: l.createdAt,
                 submittedAt: l.submitted_at,
                 elementId: l.element_id,
+                elementType: l.element_type,
+                formName: l.form_name,
                 domain: l.domain,
                 pathname: l.pathname,
                 formData: l.form_data,

@@ -9,9 +9,12 @@ const mongoose = require('mongoose');
  */
 const leadSchema = new mongoose.Schema(
   {
-    // Which Preta element produced this submission. Useful for telling a pricing-page modal
-    // apart from a footer newsletter form.
-    element_id: { type: String, default: null },
+    // Which Preta element produced this submission. The id is stable and is what ties old leads
+    // to new ones; the name and type are what a human reads. Keep all three — a form can be
+    // renamed, but its id will not change.
+    element_id:   { type: String, default: null },
+    element_type: { type: String, default: null },   // modal | clone | banner | wizard | …
+    form_name:    { type: String, default: null },   // whatever the creator titled the form
 
     domain:   { type: String, default: null },
     pathname: { type: String, default: null },
